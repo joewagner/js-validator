@@ -48,43 +48,34 @@ jobs:
       - name: Build 🛠
         run: npm run build
 
+      - name: Commit files from the build
+        with:
+          github-token: ${{secrets.RELEASE_TOKEN}}
+        run: |
+          git config --local user.name  ${{ github.actor }}
+          npm run prettier:fix
+          git add --all
+          git commit -S -sm "Validator version update for ${{ github.event.inputs.validator_version }}"
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: validator-update-pr-${{ github.event.inputs.validator_version }}
+
       - uses: actions/github-script@v6
         id: create-validator-update-pr
         name: Create Validator Update PR
         with:
           # NOTE: The automatic release workflow uses ${{secrets.TEXTILEIO_MACHINE_ACCESS_TOKEN}}
           #       so that workflows can be triggered across repos.
-          github-token: ${{secrets.TEXTILEIO_MACHINE_ACCESS_TOKEN}}
+          github-token: ${{secrets.RELEASE_TOKEN}}
           script: |
             try {
               const version = '${{ github.event.inputs.validator_version }}';
               const branchName = 'validator-update-pr-' + version;
+              const baseBranch = 'main';
               const prBody = '✅ This PR was created by the Validator Update PR action for version ' + version;
-
-              const baseBranchName = 'main';
-              const baseBranch = await octokit.rest.repos.getBranch({
-                owner,
-                repo,
-                baseBranchName,
-              });
-
-              // Create a branch with the new release
-              const branchRef = await github.rest.git.createRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: 'refs/heads/' + branchName,
-                sha: baseBranch.commit.sha
-              });
-
-              console.log(branchRef);
-
-              // TODO: commit changes
-              await github.rest.git.createCommit({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                message: 'Add Validator Update PR binaries for ' + version,
-                tree: branchRef
-              });
 
               // Create a pull request
               await github.rest.pulls.create({
@@ -92,7 +83,7 @@ jobs:
                 repo: context.repo.repo,
                 title: 'Validator Update PR ' + version,
                 head: branchName,
-                base: baseBranchName,
+                base: baseBranch,
                 body: prBody
               });
             } catch (err) {
