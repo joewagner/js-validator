@@ -54,7 +54,7 @@ jobs:
         with:
           # NOTE: The automatic release workflow uses ${{secrets.TEXTILEIO_MACHINE_ACCESS_TOKEN}}
           #       so that workflows can be triggered across repos.
-          github-token: ${{secrets.TEXTILEIO_MACHINE_ACCESS_TOKEN}}
+          github-token: ${{secrets.RELEASE_TOKEN}}
           script: |
             try {
               const version = '${{ github.event.inputs.validator_version }}';
@@ -62,10 +62,10 @@ jobs:
               const prBody = '✅ This PR was created by the Validator Update PR action for version ' + version;
 
               const baseBranchName = 'main';
-              const baseBranch = await octokit.rest.repos.getBranch({
-                owner,
-                repo,
-                baseBranchName,
+              const baseBranch = await github.rest.repos.getBranch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch: baseBranchName
               });
 
               // Create a branch with the new release
@@ -73,17 +73,17 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 ref: 'refs/heads/' + branchName,
-                sha: baseBranch.commit.sha
+                sha: baseBranch.data.commit.sha
               });
 
-              console.log(branchRef);
+              console.log("branchRef", branchRef);
 
-              // TODO: commit changes
+              // commit changes
               await github.rest.git.createCommit({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 message: 'Add Validator Update PR binaries for ' + version,
-                tree: branchRef
+                tree: branchRef.data.object.sha
               });
 
               // Create a pull request
