@@ -49,13 +49,11 @@ jobs:
         run: npm run build
 
       - name: Commit files from the build
-        with:
-          github-token: ${{secrets.RELEASE_TOKEN}}
         run: |
           git config --local user.name  ${{ github.actor }}
           npm run prettier:fix
           git add --all
-          git commit -S -sm "Validator version update for ${{ github.event.inputs.validator_version }}"
+          git commit -m "Validator version update for ${{ github.event.inputs.validator_version }}"
 
       - name: Push changes
         uses: ad-m/github-push-action@master
